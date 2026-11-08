@@ -11,6 +11,19 @@ class Multi_Armed_Bandits:
     def get_reward(self, arm: int):
         return int(self.rng.random() < self.arms[arm])
 
+class AlgorithmType(Enum):
+    EPSILON_GREEDY = "epsilon_greedy"
+    UCB1 = "ucb1"
+
+def create_algorithm(algorithm_type, bandits, epsilon=0.1):
+
+    if algorithm_type == AlgorithmType.EPSILON_GREEDY:
+        return EpsilonGreedy(epsilon, bandits)
+
+    if algorithm_type == AlgorithmType.UCB1:
+        return UCB1(bandits)
+
+
 class Algorithm(ABC):
     def __init__(self, bandits: Multi_Armed_Bandits):
         self.bandits = bandits
@@ -21,7 +34,7 @@ class Algorithm(ABC):
 
         self.regret = 0 #regret(addition of (expected best mean - choosed expected mean))
         self.current = 0 #best arm detected
-        
+
         self.rng = self.bandits.rng
 
     @abstractmethod
