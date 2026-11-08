@@ -21,12 +21,12 @@ def single_run(seed: int, rewards: list, epsilon: float, algo, n: int):
 
     for i in range(n):
         arm = E.choose_arm()
+        reward = E.update(arm)
+        print(f"Round {i+1:>3} | "
+          f"Arm: {arm} | "
+          f"Reward: {reward} | "
+          f"Counts: {E.counts} | "
+          f"Means: {np.round(E.means, 3)} | "
+          f"Regret: {E.regret:.3f}")
 
-        print({
-            "round":  i + 1,
-            "counts": E.counts.copy(),
-            "means":  E.means.copy(),
-            "regret": E.regret,
-        })
-
-single_run(SEED, REWARDS, EPSILON, TYPE, 10)
+single_run(SEED, REWARDS, EPSILON, TYPE, 20)

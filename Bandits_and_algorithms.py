@@ -46,7 +46,7 @@ class Algorithm(ABC):
     def update(self, arm: int) -> int:
         pass
 
-class EpsilonGreedy:
+class EpsilonGreedy(Algorithm):
     def __init__(self, epsilon: float, bandits: Multi_Armed_Bandits):
         super().__init__(bandits)
         self.epsilon = epsilon
