@@ -1,4 +1,5 @@
 import numpy as np
+from enum import Enum
 from abc import ABC, abstractmethod
 
 class Multi_Armed_Bandits:

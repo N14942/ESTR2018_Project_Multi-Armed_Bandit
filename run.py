@@ -12,19 +12,21 @@ EPSILON = 0.2
 TYPE = AlgorithmType.EPSILON_GREEDY
 
 #unfinished
-def single_run(seed: int, rewards: list, epsilon: float, n: int):
+def single_run(seed: int, rewards: list, epsilon: float, algo, n: int):
     """set seed"""
-    seed = SEED
     rng = np.random.default_rng(seed)
 
-    rewards = REWARDS
-    epsilon = EPSILON
-
     B = Multi_Armed_Bandits(rng, rewards)
-    E = create_algorithm(TYPE, B, epsilon)
+    E = create_algorithm(algo, B, epsilon)
 
-    for _ in range(n):
+    for i in range(n):
         arm = E.choose_arm()
-        reward = E.update(arm)
 
-    return E
+        print({
+            "round":  i + 1,
+            "counts": E.counts.copy(),
+            "means":  E.means.copy(),
+            "regret": E.regret,
+        })
+
+single_run(SEED, REWARDS, EPSILON, TYPE, 10)
