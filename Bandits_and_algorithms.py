@@ -74,3 +74,30 @@ class EpsilonGreedy(Algorithm):
         self.current = int(self.rng.choice(best))
 
         return reward
+
+class UCB1(Algorithm):
+    def _init_(self, bandits: Multi_Armed_Bandits):
+        super().__init__(bandits)
+        #already set self.bandits self.t self.counts self.rewards self.means self.regret self.current self.rng
+
+    def choose_arm(self) -> int:    #UCB1 = mean + square root(2lnt/Ni) and then choose the biggest one
+        if self.t < self.bandits.n:
+            untried = np.flatnonzero(self.counts == 0)
+            return int(self.rng.choice(untried)) #when there are still some bandits haven't been tried
+        else:
+            self.means = self.rewards / self.counts
+            used_t = 2* np.log(self.t)
+            ucb_part2 = np.sqrt(used_t / self.counts)
+            UCB_score = self.means + ucb_part2
+            return int(np.argmax(UCB_score))
+
+    def update(self, arm: int) -> int:
+        reward = self.bandits.get_reward(arm)
+        self.t += 1
+        self.counts[arm] += 1
+        self.rewards[arm] += reward
+        
+        self.regret += self.bandits.arms[self.bandits.best] - self.bandits.arms[arm]
+        self.means[arm] = self.rewards[arm] / self.counts[arm]
+
+        return reward
