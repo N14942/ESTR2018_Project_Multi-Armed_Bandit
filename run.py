@@ -42,12 +42,12 @@ def single_run(seed: int, rewards: list, epsilon: float, n: int, algorithm_type)
     return E
 
 
-def multiple_run(algorithm_type, rewards, epsilon,n_rounds=1000, n_runs=50):
+def multiple_run(seeed, algorithm_type, rewards, epsilon,n_rounds=1000, n_runs=50):
     all_regrets = []
     all_rewards = []
     all_counts = []
     for i in range(n_runs):
-        E = single_run(seed=42 + i,
+        E = single_run(seed=seeed + i,
             rewards=rewards,
             epsilon=epsilon,
             n=n_rounds,
