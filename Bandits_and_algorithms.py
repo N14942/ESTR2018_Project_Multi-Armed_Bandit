@@ -1,4 +1,5 @@
 import numpy as np
+from abc import ABC, abstractmethod
 
 class Multi_Armed_Bandits:
     def __init__(self, rng, rewards:list):
@@ -9,22 +10,32 @@ class Multi_Armed_Bandits:
 
     def get_reward(self, arm: int):
         return int(self.rng.random() < self.arms[arm])
-    
 
-class EpsilonGreedy:
-    def __init__(self, epsilon: float, bandits: Multi_Armed_Bandits):
-        self.epsilon = epsilon
+class Algorithm(ABC):
+    def __init__(self, bandits: Multi_Armed_Bandits):
         self.bandits = bandits
-
-        self.t = 0 #total times decision is made
+        self.t = 0 #total times of decision is made
         self.counts = np.zeros(self.bandits.n, dtype=int) #number of times choosing an arm
         self.rewards = np.zeros(self.bandits.n, dtype=int) #rewards get from each arm
         self.means = np.zeros(self.bandits.n, dtype=float) #detected average reward
 
         self.regret = 0 #regret(addition of (expected best mean - choosed expected mean))
         self.current = 0 #best arm detected
-
+        
         self.rng = self.bandits.rng
+
+    @abstractmethod
+    def choose_arm(self) -> int:
+        pass
+
+    @abstractmethod
+    def update(self, arm: int) -> int:
+        pass
+
+class EpsilonGreedy:
+    def __init__(self, epsilon: float, bandits: Multi_Armed_Bandits):
+        super().__init__(bandits)
+        self.epsilon = epsilon
 
     def choose_arm(self) -> int:
         if self.t < self.bandits.n:
