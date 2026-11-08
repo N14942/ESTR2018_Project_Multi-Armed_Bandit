@@ -9,23 +9,15 @@ from Bandits_and_algorithms import (
 SEED = 42
 REWARDS = [0.8, 0.6, 0.7, 0.4]
 EPSILON = 0.2
-
-CHANGE_TIME = 50
-CHANGE_ARM = {
-    0: 0.3,
-    2: 0.9
-}
-
-UCB1 = AlgorithmType.UCB1
-EPSILON_GREEDY = AlgorithmType.EPSILON_GREEDY
+TYPE = AlgorithmType.EPSILON_GREEDY
 
 #unfinished
-def single_run(seed: int, rewards: list, epsilon: float, algo, n: int):
+def single_run(seed: int, rewards: list, epsilon: float, n: int, algorithm_type):
     """set seed"""
     rng = np.random.default_rng(seed)
 
     B = Multi_Armed_Bandits(rng, rewards)
-    E = create_algorithm(algo, B, epsilon)
+    E = create_algorithm(algorithm_type, B, epsilon)
 
     for i in range(n):
         B.change_reward(
@@ -43,4 +35,4 @@ def single_run(seed: int, rewards: list, epsilon: float, algo, n: int):
           f"Means: {np.round(E.means, 3)} | "
           f"Regret: {E.regret:.3f}")
 
-single_run(SEED, REWARDS, EPSILON, UCB1, 20)
+single_run(SEED, REWARDS, EPSILON, TYPE, 20)
