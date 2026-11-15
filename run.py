@@ -45,6 +45,7 @@ def single_run(seed: int,
     for i in range(n):
         B.change_reward(
         CHANGE_TIME_1,CHANGE_TIME_2,
+        i+1,
         CHANGE_ARM_1, CHANGE_ARM_2
         )
         arm = E.choose_arm()
@@ -168,9 +169,9 @@ epsilon_results = multiple_run(
     AlgorithmType.EPSILON_GREEDY,
     REWARDS,
     EPSILON,
-    1000,
-    20,
-    WINDOW
+    WINDOW,
+    n_rounds=1000,
+    n_runs=20
 )
 
 ucb_results = multiple_run(
@@ -178,9 +179,9 @@ ucb_results = multiple_run(
     AlgorithmType.UCB1,
     REWARDS,
     EPSILON,
-    1000,
-    20,
-    WINDOW
+    WINDOW,
+    n_rounds=1000,
+    n_runs=20
 )
 
 print("Epsilon-Greedy Regret:", epsilon_results["mean_regret"])
