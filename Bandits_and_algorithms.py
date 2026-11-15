@@ -4,7 +4,7 @@ from collections import deque
 from abc import ABC, abstractmethod
 
 class Multi_Armed_Bandits:
-    def __init__(self, rng, rewards:list, n):
+    def __init__(self, rng, rewards:list):
         self.arms = np.array(rewards, dtype=float) #reward of each arm
         self.n = len(rewards) #number of arms
         self.best = int(np.argmax(self.arms)) #current arm with best reward
@@ -13,9 +13,9 @@ class Multi_Armed_Bandits:
     def get_reward(self, arm: int):
         return int(self.rng.random() < self.arms[arm])
 
-    def change_reward(self, change_time, change_arm = None):
+    def change_reward(self, change_time, current_time, change_arm = None):
         #change arm in dict {0: 0.8, 3: 1, etc}
-        if change_arm and self.t == change_time:
+        if change_arm and current_time == change_time:
             for arm, new_reward in change_arm.items():
                 self.arms[arm] = new_reward
             self.best = int(np.argmax(self.arms))
@@ -23,14 +23,18 @@ class Multi_Armed_Bandits:
 class AlgorithmType(Enum):
     EPSILON_GREEDY = "epsilon_greedy"
     UCB1 = "ucb1"
+    SW_UCB = "sw_ucb"
 
-def create_algorithm(algorithm_type, bandits, epsilon=0.1):
+def create_algorithm(algorithm_type, bandits, window_size, epsilon):
 
     if algorithm_type == AlgorithmType.EPSILON_GREEDY:
         return EpsilonGreedy(epsilon, bandits)
 
     if algorithm_type == AlgorithmType.UCB1:
         return UCB1(bandits)
+
+    if algorithm_type == AlgorithmType.SW_UCB:
+        return SlidingWindowUCB(bandits, window_size)
 
 
 class Algorithm(ABC):
@@ -111,6 +115,12 @@ class UCB1(Algorithm):
         self.means[arm] = self.rewards[arm] / self.counts[arm]
         self._record_observation(arm, reward)
 
+        counts, rewards = self._get_statistics()
+        valid = counts > 0
+
+        estimated_means = np.full(self.bandits.n, -np.inf)
+        estimated_means[valid] = rewards[valid] / counts[valid]
+        self.current = int(np.argmax(estimated_means))
         return reward
 
 class SlidingWindowUCB(UCB1):

@@ -10,7 +10,7 @@ from Bandits_and_algorithms import (
 SEED = 42
 REWARDS = [0.8, 0.6, 0.7, 0.4]
 EPSILON = 0.2
-TYPE = AlgorithmType.UCB1
+WINDOW = 100
 
 CHANGE_TIME = 500
 CHANGE_ARM = {
@@ -19,12 +19,17 @@ CHANGE_ARM = {
 }
 
 #unfinished
-def single_run(seed: int, rewards: list, epsilon: float, n: int, algorithm_type):
+def single_run(seed: int, 
+               rewards: list, 
+               epsilon: float, 
+               n: int, 
+               algorithm_type,
+               window_size):
     """set seed"""
     rng = np.random.default_rng(seed)
 
     B = Multi_Armed_Bandits(rng, rewards)
-    E = create_algorithm(algorithm_type, B, epsilon)
+    E = create_algorithm(algorithm_type, B, epsilon, window_size)
     E.regret_history = []
     E.reward_history = []
     E.best_arm_history = []
@@ -34,7 +39,6 @@ def single_run(seed: int, rewards: list, epsilon: float, n: int, algorithm_type)
     for i in range(n):
         B.change_reward(
         CHANGE_TIME,
-        i+1,
         CHANGE_ARM
         )
         arm = E.choose_arm()
@@ -54,19 +58,19 @@ def single_run(seed: int, rewards: list, epsilon: float, n: int, algorithm_type)
     return E
 
 
-def multiple_run(seeed, algorithm_type, rewards, epsilon,n_rounds=1000, n_runs=50):
+def multiple_run(seeed, algorithm_type, rewards, epsilon, window_size, n_rounds=1000, n_runs=50):
     all_regrets = []
     all_rewards = []
     all_counts = []
     regret_history = np.zeros(n_rounds)
     reward_history = np.zeros(n_rounds)
     for i in range(n_runs):
-        E = single_run(seed=seeed + i,
-            rewards=rewards,
-            epsilon=epsilon,
-            n=n_rounds,
-            algorithm_type=algorithm_type
-        )
+        E = single_run(seeed + i,
+            rewards,
+            epsilon,
+            n_rounds,
+            algorithm_type,
+            window_size)
         if i == 0:
             best_arm_history = E.best_arm_history
             selected_arm_history = E.selected_arm_history
@@ -152,7 +156,8 @@ epsilon_results = multiple_run(
     REWARDS,
     EPSILON,
     1000,
-    20
+    20,
+    WINDOW
 )
 
 ucb_results = multiple_run(
@@ -161,7 +166,8 @@ ucb_results = multiple_run(
     REWARDS,
     EPSILON,
     1000,
-    20
+    20,
+    WINDOW
 )
 
 print("Epsilon-Greedy Regret:", epsilon_results["mean_regret"])
