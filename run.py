@@ -120,13 +120,20 @@ def plot_results(results):
         changes = np.flatnonzero(np.diff(best)) + 1
         best_ax.scatter(rounds[changes], best[changes], s=12, color=f"C{i % 10}")
         best_ax.set(title=f"{name} (seed {result['seed']})", ylabel="Arm", yticks=arms)
-        if CHANGE_ARM and CHANGE_TIME in rounds:
-            best_ax.axvline(CHANGE_TIME, color="gray", linestyle="--", label=f"Rewards change at {CHANGE_TIME}")
-            after_change = changes[rounds[changes] >= CHANGE_TIME]
+        if CHANGE_ARM_1 and CHANGE_TIME_1 in rounds:
+            best_ax.axvline(CHANGE_TIME_1, color="gray", linestyle="--", label=f"Rewards change at {CHANGE_TIME_1}")
+            after_change = changes[rounds[changes] >= CHANGE_TIME_1]
             if len(after_change):
                 j = after_change[0]
                 best_ax.annotate(f"Round {rounds[j]}: {best[j-1]} to {best[j]}",
                                  (rounds[j], best[j]), xytext=(8, 8), textcoords="offset points")
+        if CHANGE_ARM_2 and CHANGE_TIME_2 in rounds:
+                    best_ax.axvline(CHANGE_TIME_2, color="gray", linestyle="--", label=f"Rewards change at {CHANGE_TIME_2}")
+                    after_change = changes[rounds[changes] >= CHANGE_TIME_2]
+                    if len(after_change):
+                        j = after_change[0]
+                        best_ax.annotate(f"Round {rounds[j]}: {best[j-1]} to {best[j]}",
+                                         (rounds[j], best[j]), xytext=(8, 8), textcoords="offset points")
         best_ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
         if len(rounds) > 1:
             for ax in (best_ax, regret_ax, reward_ax):
