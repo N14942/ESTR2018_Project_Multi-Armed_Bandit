@@ -13,10 +13,14 @@ class Multi_Armed_Bandits:
     def get_reward(self, arm: int):
         return int(self.rng.random() < self.arms[arm])
 
-    def change_reward(self, change_time, current_time, change_arm = None):
+    def change_reward(self, change_time_1,change_time_2, current_time, change_arm_1 = None,change_arm_2 = None):
         #change arm in dict {0: 0.8, 3: 1, etc}
-        if change_arm and current_time == change_time:
-            for arm, new_reward in change_arm.items():
+        if change_arm_1 and current_time == change_time_1:
+            for arm, new_reward in change_arm_1.items():
+                self.arms[arm] = new_reward
+            self.best = int(np.argmax(self.arms))
+        if change_arm_2 and current_time == change_time_2:
+            for arm, new_reward in change_arm_2.items():
                 self.arms[arm] = new_reward
             self.best = int(np.argmax(self.arms))
             
