@@ -3,7 +3,7 @@ from enum import Enum
 from abc import ABC, abstractmethod
 
 class Multi_Armed_Bandits:
-    def __init__(self, rng, rewards:list, n):
+    def __init__(self, rng, rewards:list):
         self.arms = np.array(rewards, dtype=float) #reward of each arm
         self.n = len(rewards) #number of arms
         self.best = int(np.argmax(self.arms)) #current arm with best reward
@@ -14,7 +14,7 @@ class Multi_Armed_Bandits:
 
     def change_reward(self, change_time, current_time, change_arm = None):
         #change arm in dict {0: 0.8, 3: 1, etc}
-        if change_arm and self.t == change_time:
+        if change_arm and current_time == change_time:
             for arm, new_reward in change_arm.items():
                 self.arms[arm] = new_reward
             self.best = int(np.argmax(self.arms))
@@ -83,7 +83,7 @@ class EpsilonGreedy(Algorithm):
         return reward
 
 class UCB1(Algorithm):
-    def _init_(self, bandits: Multi_Armed_Bandits):
+    def __init__(self, bandits: Multi_Armed_Bandits):
         super().__init__(bandits)
         #already set self.bandits self.t self.counts self.rewards self.means self.regret self.current self.rng
 
