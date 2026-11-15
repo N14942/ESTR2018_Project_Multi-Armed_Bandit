@@ -107,4 +107,5 @@ class UCB1(Algorithm):
         self.regret += self.bandits.arms[self.bandits.best] - self.bandits.arms[arm]
         self.means[arm] = self.rewards[arm] / self.counts[arm]
 
+        self.current = int(np.argmax(np.where(self.counts > 0, self.means, -np.inf)))
         return reward
