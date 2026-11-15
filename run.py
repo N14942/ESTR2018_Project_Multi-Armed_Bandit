@@ -14,8 +14,8 @@ TYPE = AlgorithmType.UCB1
 
 CHANGE_TIME = 500
 CHANGE_ARM = {
-    0: 0.3,
-    2: 0.9
+    0: 0.55,
+    2: 0.75
 }
 
 #unfinished
@@ -28,6 +28,7 @@ def single_run(seed: int, rewards: list, epsilon: float, n: int, algorithm_type)
     E.regret_history = []
     E.reward_history = []
     E.best_arm_history = []
+    E.selected_arm_history = []
     total_reward = 0
 
     for i in range(n):
@@ -37,6 +38,7 @@ def single_run(seed: int, rewards: list, epsilon: float, n: int, algorithm_type)
         CHANGE_ARM
         )
         arm = E.choose_arm()
+        E.selected_arm_history.append(arm)
         reward = E.update(arm)
         total_reward += reward
         E.regret_history.append(E.regret)
@@ -67,6 +69,7 @@ def multiple_run(seeed, algorithm_type, rewards, epsilon,n_rounds=1000, n_runs=5
         )
         if i == 0:
             best_arm_history = E.best_arm_history
+            selected_arm_history = E.selected_arm_history
         all_regrets.append(E.regret)
         all_rewards.append(np.sum(E.rewards))
         all_counts.append(E.counts.copy())
@@ -74,6 +77,7 @@ def multiple_run(seeed, algorithm_type, rewards, epsilon,n_rounds=1000, n_runs=5
         reward_history += E.reward_history
     return {
         "best_arm_history": best_arm_history,
+        "selected_arm_history": selected_arm_history,
         "seed": seeed,
         "mean_regret_history": regret_history / n_runs,
         "mean_reward_history": reward_history / n_runs,
@@ -100,18 +104,20 @@ def plot_results(results):
         arms = np.arange(len(result["mean_counts"]))
         best_ax = best_axes[i, 0]
         best = np.array(result["best_arm_history"][start:])
-        best_ax.step(rounds, best, where="post", color=f"C{i % 10}")
+        best_ax.scatter(rounds, result["selected_arm_history"][start:],
+                        color="teal", s=6, zorder=3, label="Selected arm")
+        best_ax.step(rounds, best, where="post", color=f"C{i % 10}", label="Estimated best arm")
         changes = np.flatnonzero(np.diff(best)) + 1
         best_ax.scatter(rounds[changes], best[changes], s=12, color=f"C{i % 10}")
-        best_ax.set(title=f"{name} (seed {result['seed']})", ylabel="Estimated best arm", yticks=arms)
+        best_ax.set(title=f"{name} (seed {result['seed']})", ylabel="Arm", yticks=arms)
         if CHANGE_ARM and CHANGE_TIME in rounds:
             best_ax.axvline(CHANGE_TIME, color="gray", linestyle="--", label=f"Rewards change at {CHANGE_TIME}")
-            best_ax.legend(loc="upper right")
             after_change = changes[rounds[changes] >= CHANGE_TIME]
             if len(after_change):
                 j = after_change[0]
                 best_ax.annotate(f"Round {rounds[j]}: {best[j-1]} to {best[j]}",
                                  (rounds[j], best[j]), xytext=(8, 8), textcoords="offset points")
+        best_ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
         if len(rounds) > 1:
             for ax in (best_ax, regret_ax, reward_ax):
                 ax.set_xlim(rounds[0], rounds[-1])
@@ -161,4 +167,3 @@ ucb_results = multiple_run(
 print("Epsilon-Greedy Regret:", epsilon_results["mean_regret"])
 print("UCB1 Regret:", ucb_results["mean_regret"])
 plot_results({"Epsilon-Greedy": epsilon_results, "UCB1": ucb_results})
-
