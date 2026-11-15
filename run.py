@@ -44,8 +44,8 @@ def single_run(seed: int,
 
     for i in range(n):
         B.change_reward(
-        CHANGE_TIME,
-        CHANGE_ARM
+        CHANGE_TIME_1,CHANGE_TIME_2,
+        CHANGE_ARM_1, CHANGE_ARM_2
         )
         arm = E.choose_arm()
         E.selected_arm_history.append(arm)
