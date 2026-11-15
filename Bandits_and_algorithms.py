@@ -1,9 +1,10 @@
 import numpy as np
 from enum import Enum
+from collections import deque
 from abc import ABC, abstractmethod
 
 class Multi_Armed_Bandits:
-    def __init__(self, rng, rewards:list):
+    def __init__(self, rng, rewards:list, n):
         self.arms = np.array(rewards, dtype=float) #reward of each arm
         self.n = len(rewards) #number of arms
         self.best = int(np.argmax(self.arms)) #current arm with best reward
@@ -12,9 +13,9 @@ class Multi_Armed_Bandits:
     def get_reward(self, arm: int):
         return int(self.rng.random() < self.arms[arm])
 
-    def change_reward(self, change_time, current_time, change_arm = None):
+    def change_reward(self, change_time, change_arm = None):
         #change arm in dict {0: 0.8, 3: 1, etc}
-        if change_arm and current_time == change_time:
+        if change_arm and self.t == change_time:
             for arm, new_reward in change_arm.items():
                 self.arms[arm] = new_reward
             self.best = int(np.argmax(self.arms))
@@ -83,29 +84,51 @@ class EpsilonGreedy(Algorithm):
         return reward
 
 class UCB1(Algorithm):
-    def __init__(self, bandits: Multi_Armed_Bandits):
-        super().__init__(bandits)
-        #already set self.bandits self.t self.counts self.rewards self.means self.regret self.current self.rng
+    def _get_statistics(self):
+        return self.counts, self.rewards
 
-    def choose_arm(self) -> int:    #UCB1 = mean + square root(2lnt/Ni) and then choose the biggest one
-        if self.t < self.bandits.n:
-            untried = np.flatnonzero(self.counts == 0)
-            return int(self.rng.choice(untried)) #when there are still some bandits haven't been tried
-        else:
-            self.means = self.rewards / self.counts
-            used_t = 2* np.log(self.t)
-            ucb_part2 = np.sqrt(used_t / self.counts)
-            UCB_score = self.means + ucb_part2
-            return int(np.argmax(UCB_score))
+    def _record_observation(self, arm, reward):
+        pass
+
+    def choose_arm(self) -> int:
+        counts, rewards = self._get_statistics()
+        untried = np.flatnonzero(counts == 0)
+
+        if len(untried) > 0:
+            return int(self.rng.choice(untried))
+        
+        means = rewards / counts
+        ucb_scores = np.sqrt(2 * np.log(self.t) / counts) + means
+        return int(np.argmax(ucb_scores))
 
     def update(self, arm: int) -> int:
         reward = self.bandits.get_reward(arm)
+
         self.t += 1
         self.counts[arm] += 1
         self.rewards[arm] += reward
-        
         self.regret += self.bandits.arms[self.bandits.best] - self.bandits.arms[arm]
         self.means[arm] = self.rewards[arm] / self.counts[arm]
+        self._record_observation(arm, reward)
 
-        self.current = int(np.argmax(np.where(self.counts > 0, self.means, -np.inf)))
         return reward
+
+class SlidingWindowUCB(UCB1):
+    def __init__(self, bandits, window_size=100):
+        super().__init__(bandits)
+
+        self.window_size = window_size #>= number of arms
+        self.history = deque(maxlen=window_size)
+
+    def _get_statistics(self):
+        window_counts = np.zeros(self.bandits.n, dtype=int)
+        window_rewards = np.zeros(self.bandits.n, dtype=float)
+
+        for arm, reward in self.history:
+            window_counts[arm] += 1
+            window_rewards[arm] += reward
+
+        return window_counts, window_rewards
+
+    def _record_observation(self, arm, reward):
+        self.history.append((arm, reward))
