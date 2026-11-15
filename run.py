@@ -12,10 +12,16 @@ REWARDS = [0.8, 0.6, 0.7, 0.4]
 EPSILON = 0.2
 WINDOW = 100
 
-CHANGE_TIME = 500
-CHANGE_ARM = {
+CHANGE_TIME_1 = 350
+CHANGE_TIME_2 = 650
+CHANGE_ARM_1 = {
     0: 0.55,
-    2: 0.75
+    2: 0.58
+}
+
+CHANGE_ARM_2 = {
+    1: 0.56,
+    3: 0.62
 }
 
 #unfinished
