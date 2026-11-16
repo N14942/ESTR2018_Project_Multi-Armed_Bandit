@@ -1,4 +1,5 @@
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 import numpy as np
 import matplotlib.pyplot as plt
 from Bandits_and_algorithms import (
@@ -10,10 +11,12 @@ from Bandits_and_algorithms import (
 SEED = 42
 REWARDS = [0.8, 0.6, 0.7, 0.4]
 EPSILON = 0.2
-WINDOW = 450
+WINDOW = 150
 
-CHANGE_TIME_1 = 350
-CHANGE_TIME_2 = 650
+CHANGE_NUM = 1  # 0: no changes, 1: first change, 2: both changes
+
+CHANGE_TIME_1 = 1000
+CHANGE_TIME_2 = 3500
 CHANGE_ARM_1 = {
     0: 0.55,
     2: 0.58
@@ -23,6 +26,13 @@ CHANGE_ARM_2 = {
     1: 0.56,
     3: 0.62
 }
+
+def active_changes():
+    if type(CHANGE_NUM) is not int or not 0 <= CHANGE_NUM <= 2:
+        raise ValueError("CHANGE_NUM must be 0, 1 or 2")
+    return (CHANGE_ARM_1 if CHANGE_NUM >= 1 else None,
+            CHANGE_ARM_2 if CHANGE_NUM == 2 else None)
+
 
 #unfinished
 def single_run(seed: int, 
@@ -45,13 +55,14 @@ def single_run(seed: int,
     E.reward_history = []
     E.best_arm_history = []
     E.selected_arm_history = []
+    E.true_best_history = []
+    E.correct_history = []
     total_reward = 0
+    active_arm_1, active_arm_2 = active_changes()
 
     for i in range(n):
         B.change_reward(
-        CHANGE_TIME_1,CHANGE_TIME_2,
-        i+1,
-        CHANGE_ARM_1, CHANGE_ARM_2
+            CHANGE_TIME_1, CHANGE_TIME_2, i+1, active_arm_1, active_arm_2
         )
         arm = E.choose_arm()
         E.selected_arm_history.append(arm)
@@ -60,6 +71,8 @@ def single_run(seed: int,
         E.regret_history.append(E.regret)
         E.reward_history.append(total_reward)
         E.best_arm_history.append(E.current)
+        E.true_best_history.append(B.best)
+        E.correct_history.append(B.arms[E.current] == B.arms[B.best])
         print(f"{algorithm_type.value} | Seed: {seed} | Round {i+1:>3} | "
           f"Estimated best arm: {E.current} | "
           f"Arm: {arm} | "
@@ -71,7 +84,7 @@ def single_run(seed: int,
     return E
 
 
-def multiple_run(seeed, algorithm_type, rewards, epsilon, window_size, n_rounds=1000, n_runs=50):
+def multiple_run(seeed, algorithm_type, rewards, epsilon, window_size, n_rounds=5000, n_runs=25):
     all_regrets = []
     all_rewards = []
     all_counts = []
@@ -87,6 +100,8 @@ def multiple_run(seeed, algorithm_type, rewards, epsilon, window_size, n_rounds=
         if i == 0:
             best_arm_history = E.best_arm_history
             selected_arm_history = E.selected_arm_history
+            true_best_history = E.true_best_history
+            correct_history = E.correct_history
         all_regrets.append(E.regret)
         all_rewards.append(E.reward_history[-1])
         all_counts.append(E.counts.copy())
@@ -95,6 +110,8 @@ def multiple_run(seeed, algorithm_type, rewards, epsilon, window_size, n_rounds=
     return {
         "best_arm_history": best_arm_history,
         "selected_arm_history": selected_arm_history,
+        "true_best_history": true_best_history,
+        "correct_history": correct_history,
         "seed": seeed,
         "mean_regret_history": regret_history / n_runs,
         "mean_reward_history": reward_history / n_runs,
@@ -111,6 +128,7 @@ def plot_results(results):
     counts_fig, counts_ax = plt.subplots()
     best_fig, best_axes = plt.subplots(len(results), 1, sharex=True, squeeze=False,
                                       figsize=(10, 2.6 * len(results)))
+    active_arm_1, active_arm_2 = active_changes()
     width = 0.8 / len(results)
     for i, (name, result) in enumerate(results.items()):
         start = 0
@@ -123,34 +141,30 @@ def plot_results(results):
         best_ax.scatter(rounds, result["selected_arm_history"][start:],
                         color="teal", s=6, zorder=3, label="Selected arm")
         best_ax.step(rounds, best, where="post", color=f"C{i % 10}", label="Estimated best arm")
+        best_ax.step(rounds, result["true_best_history"][start:], where="post",
+                     color="black", linestyle="--", zorder=4, label="True best arm")
         changes = np.flatnonzero(np.diff(best)) + 1
         best_ax.scatter(rounds[changes], best[changes], s=12, color=f"C{i % 10}")
         best_ax.set(title=f"{name} (seed {result['seed']})", ylabel="Arm", yticks=arms)
-        if CHANGE_ARM_1 and CHANGE_TIME_1 <= rounds[-1]:
-            best_ax.axvline(
-            CHANGE_TIME_1,
-            color="gray",
-            linestyle="--",
-            label=f"Rewards change at {CHANGE_TIME_1}"
-            )
-            after_change = changes[rounds[changes] >= CHANGE_TIME_1]
-            if len(after_change):
-                j = after_change[0]
-                best_ax.annotate(f"Round {rounds[j]}: {best[j-1]} to {best[j]}",
-                                 (rounds[j], best[j]), xytext=(8, 8), textcoords="offset points")
-
-        if CHANGE_ARM_2 and CHANGE_TIME_2 <= rounds[-1]:
-            best_ax.axvline(
-                CHANGE_TIME_2, 
-                color="gray", 
-                linestyle="--", 
-                label=f"Rewards change at {CHANGE_TIME_2}"
-                )
-            after_change = changes[rounds[changes] >= CHANGE_TIME_2]
-            if len(after_change):
-                j = after_change[0]
-                best_ax.annotate(f"Round {rounds[j]}: {best[j-1]} to {best[j]}",
-                                 (rounds[j], best[j]), xytext=(8, 8), textcoords="offset points")
+        change_times = sorted({t for t, updates in ((CHANGE_TIME_1, active_arm_1),
+                                                    (CHANGE_TIME_2, active_arm_2))
+                               if updates and rounds[0] <= t <= rounds[-1]})
+        for change, end in zip(change_times, change_times[1:] + [rounds[-1] + 1]):
+            hits = np.flatnonzero((rounds >= change) & (rounds < end) & result["correct_history"][start:])
+            midpoint = (change + end - 1) / 2
+            text_at = (midpoint, 0.97)
+            if len(hits):
+                j = hits[0]
+                best_ax.scatter(rounds[j], best[j], marker="*", s=100, color="black", zorder=5)
+                best_ax.annotate(f"Arm {best[j]}: round {rounds[j]} (+{rounds[j] - change})",
+                                 xy=(rounds[j], best[j]), xytext=text_at,
+                                 textcoords=best_ax.get_xaxis_transform(), ha="center", va="top",
+                                 fontsize=9, arrowprops=dict(arrowstyle="->", color="black"))
+            else:
+                best_ax.text(*text_at, f"No correct estimate by {end - 1}",
+                             transform=best_ax.get_xaxis_transform(), ha="center", va="top", fontsize=9)
+            best_ax.axvline(change, color="gray", linestyle="--", label=f"Rewards change at {change}")
+        best_ax.set_ylim(-0.2, arms[-1] + 0.85)
         best_ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
         if len(rounds) > 1:
             for ax in (best_ax, regret_ax, reward_ax):
@@ -174,7 +188,13 @@ def plot_results(results):
         print(f"Saved {path}")
     best_fig.tight_layout()
     path = results_dir / "estimated_best_arm.png"
-    best_fig.savefig(path, dpi=150)
+    with NamedTemporaryFile(dir=results_dir, suffix=".png", delete=False) as image:
+        temp_path = Path(image.name)
+    try:
+        best_fig.savefig(temp_path, dpi=150)
+        temp_path.replace(path)
+    finally:
+        temp_path.unlink(missing_ok=True)
     print(f"Saved {path}")
     plt.show()
 
@@ -185,9 +205,7 @@ epsilon_results = multiple_run(
     AlgorithmType.EPSILON_GREEDY,
     REWARDS,
     EPSILON,
-    WINDOW,
-    n_rounds=1000,
-    n_runs=20
+    WINDOW
 )
 
 ucb_results = multiple_run(
@@ -195,9 +213,7 @@ ucb_results = multiple_run(
     AlgorithmType.UCB1,
     REWARDS,
     EPSILON,
-    WINDOW,
-    n_rounds=1000,
-    n_runs=20
+    WINDOW
 )
 
 sw_ucb_results = multiple_run(
@@ -205,9 +221,7 @@ sw_ucb_results = multiple_run(
     AlgorithmType.SW_UCB,
     REWARDS,
     EPSILON,
-    WINDOW,
-    n_rounds=1000,
-    n_runs=20
+    WINDOW
 )
 
 print("Epsilon-Greedy Regret:", epsilon_results["mean_regret"])
