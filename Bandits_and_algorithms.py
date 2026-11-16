@@ -15,11 +15,11 @@ class Multi_Armed_Bandits:
 
     def change_reward(self, change_time_1,change_time_2, current_time, change_arm_1 = None,change_arm_2 = None):
         #change arm in dict {0: 0.8, 3: 1, etc}
-        if change_arm_1 and current_time == change_time_1:
+        if change_arm_1 is not None and current_time == change_time_1:
             for arm, new_reward in change_arm_1.items():
                 self.arms[arm] = new_reward
             self.best = int(np.argmax(self.arms))
-        if change_arm_2 and current_time == change_time_2:
+        if change_arm_2 is not None and current_time == change_time_2:
             for arm, new_reward in change_arm_2.items():
                 self.arms[arm] = new_reward
             self.best = int(np.argmax(self.arms))
@@ -29,7 +29,7 @@ class AlgorithmType(Enum):
     UCB1 = "ucb1"
     SW_UCB = "sw_ucb"
 
-def create_algorithm(algorithm_type, bandits, window_size, epsilon):
+def create_algorithm(algorithm_type, bandits, epsilon, window_size):
 
     if algorithm_type == AlgorithmType.EPSILON_GREEDY:
         return EpsilonGreedy(epsilon, bandits)
@@ -116,22 +116,23 @@ class UCB1(Algorithm):
         self.counts[arm] += 1
         self.rewards[arm] += reward
         self.regret += self.bandits.arms[self.bandits.best] - self.bandits.arms[arm]
-        self.means[arm] = self.rewards[arm] / self.counts[arm]
+        
         self._record_observation(arm, reward)
 
         counts, rewards = self._get_statistics()
         valid = counts > 0
 
+        self.means = np.zeros(self.bandits.n, dtype=float)
+        self.means[valid] = rewards[valid] / counts[valid]
         estimated_means = np.full(self.bandits.n, -np.inf)
-        estimated_means[valid] = rewards[valid] / counts[valid]
+        estimated_means[valid] = self.means[valid]
         self.current = int(np.argmax(estimated_means))
         return reward
 
 class SlidingWindowUCB(UCB1):
     def __init__(self, bandits, window_size=100):
         super().__init__(bandits)
-
-        self.window_size = window_size #>= number of arms
+        self.window_size = window_size
         self.history = deque(maxlen=window_size)
 
     def _get_statistics(self):
@@ -146,3 +147,14 @@ class SlidingWindowUCB(UCB1):
 
     def _record_observation(self, arm, reward):
         self.history.append((arm, reward))
+
+    def choose_arm(self) -> int:
+        counts, rewards = self._get_statistics()
+        untried = np.flatnonzero(counts == 0)
+        if len(untried) > 0:
+            return int(self.rng.choice(untried))
+
+        means = rewards / counts
+        confidence = np.sqrt(2 * np.log(self.window_size) / counts)
+        ucb_scores = means + confidence
+        return int(np.argmax(ucb_scores))

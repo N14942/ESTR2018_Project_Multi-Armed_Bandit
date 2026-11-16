@@ -10,7 +10,7 @@ from Bandits_and_algorithms import (
 SEED = 42
 REWARDS = [0.8, 0.6, 0.7, 0.4]
 EPSILON = 0.2
-WINDOW = 100
+WINDOW = 450
 
 CHANGE_TIME_1 = 350
 CHANGE_TIME_2 = 650
@@ -35,7 +35,12 @@ def single_run(seed: int,
     rng = np.random.default_rng(seed)
 
     B = Multi_Armed_Bandits(rng, rewards)
-    E = create_algorithm(algorithm_type, B, epsilon, window_size)
+    E = create_algorithm(
+        algorithm_type=algorithm_type,
+        bandits=B,
+        window_size=window_size,
+        epsilon=epsilon
+    )
     E.regret_history = []
     E.reward_history = []
     E.best_arm_history = []
@@ -62,6 +67,7 @@ def single_run(seed: int,
           f"Counts: {E.counts} | "
           f"Means: {np.round(E.means, 3)} | "
           f"Regret: {E.regret:.3f}")
+        
     return E
 
 
@@ -82,7 +88,7 @@ def multiple_run(seeed, algorithm_type, rewards, epsilon, window_size, n_rounds=
             best_arm_history = E.best_arm_history
             selected_arm_history = E.selected_arm_history
         all_regrets.append(E.regret)
-        all_rewards.append(np.sum(E.rewards))
+        all_rewards.append(E.reward_history[-1])
         all_counts.append(E.counts.copy())
         regret_history += E.regret_history
         reward_history += E.reward_history
@@ -107,9 +113,8 @@ def plot_results(results):
                                       figsize=(10, 2.6 * len(results)))
     width = 0.8 / len(results)
     for i, (name, result) in enumerate(results.items()):
-        first_round = len(result["mean_counts"])
-        start = first_round - 1
-        rounds = np.arange(first_round, len(result["mean_regret_history"]) + 1)
+        start = 0
+        rounds = np.arange(1, len(result["mean_regret_history"]) + 1)
         regret_ax.plot(rounds, result["mean_regret_history"][start:], label=name)
         reward_ax.plot(rounds, result["mean_reward_history"][start:], label=name)
         arms = np.arange(len(result["mean_counts"]))
@@ -121,20 +126,31 @@ def plot_results(results):
         changes = np.flatnonzero(np.diff(best)) + 1
         best_ax.scatter(rounds[changes], best[changes], s=12, color=f"C{i % 10}")
         best_ax.set(title=f"{name} (seed {result['seed']})", ylabel="Arm", yticks=arms)
-        if CHANGE_ARM_1 and CHANGE_TIME_1 in rounds:
-            best_ax.axvline(CHANGE_TIME_1, color="gray", linestyle="--", label=f"Rewards change at {CHANGE_TIME_1}")
+        if CHANGE_ARM_1 and CHANGE_TIME_1 <= rounds[-1]:
+            best_ax.axvline(
+            CHANGE_TIME_1,
+            color="gray",
+            linestyle="--",
+            label=f"Rewards change at {CHANGE_TIME_1}"
+            )
             after_change = changes[rounds[changes] >= CHANGE_TIME_1]
             if len(after_change):
                 j = after_change[0]
                 best_ax.annotate(f"Round {rounds[j]}: {best[j-1]} to {best[j]}",
                                  (rounds[j], best[j]), xytext=(8, 8), textcoords="offset points")
-        if CHANGE_ARM_2 and CHANGE_TIME_2 in rounds:
-                    best_ax.axvline(CHANGE_TIME_2, color="gray", linestyle="--", label=f"Rewards change at {CHANGE_TIME_2}")
-                    after_change = changes[rounds[changes] >= CHANGE_TIME_2]
-                    if len(after_change):
-                        j = after_change[0]
-                        best_ax.annotate(f"Round {rounds[j]}: {best[j-1]} to {best[j]}",
-                                         (rounds[j], best[j]), xytext=(8, 8), textcoords="offset points")
+
+        if CHANGE_ARM_2 and CHANGE_TIME_2 <= rounds[-1]:
+            best_ax.axvline(
+                CHANGE_TIME_2, 
+                color="gray", 
+                linestyle="--", 
+                label=f"Rewards change at {CHANGE_TIME_2}"
+                )
+            after_change = changes[rounds[changes] >= CHANGE_TIME_2]
+            if len(after_change):
+                j = after_change[0]
+                best_ax.annotate(f"Round {rounds[j]}: {best[j-1]} to {best[j]}",
+                                 (rounds[j], best[j]), xytext=(8, 8), textcoords="offset points")
         best_ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
         if len(rounds) > 1:
             for ax in (best_ax, regret_ax, reward_ax):
@@ -184,6 +200,21 @@ ucb_results = multiple_run(
     n_runs=20
 )
 
+sw_ucb_results = multiple_run(
+    SEED,
+    AlgorithmType.SW_UCB,
+    REWARDS,
+    EPSILON,
+    WINDOW,
+    n_rounds=1000,
+    n_runs=20
+)
+
 print("Epsilon-Greedy Regret:", epsilon_results["mean_regret"])
 print("UCB1 Regret:", ucb_results["mean_regret"])
-plot_results({"Epsilon-Greedy": epsilon_results, "UCB1": ucb_results})
+print("sw_ucb Regret:", sw_ucb_results["mean_regret"])
+plot_results({
+    "Epsilon-Greedy": epsilon_results,
+    "UCB1": ucb_results,
+    "SW-UCB": sw_ucb_results
+})
